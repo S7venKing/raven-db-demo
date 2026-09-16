@@ -1,0 +1,50 @@
+services:
+  ravendb:
+    image: ravendb/ravendb:latest
+    container_name: ravendb
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+      - "38888:38888"
+
+    environment:
+      RAVEN_Setup_Mode: None
+      RAVEN_ARGS: "--Setup.Mode=None --Security.UnsecuredAccessAllowed=PublicNetwork"
+
+    volumes:
+      - ravendb_data:/opt/RavenDB/Server/RavenData
+      - ravendb_logs:/opt/RavenDB/Server/RavenLogs
+
+    networks:
+      - app-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: ravendemo-app
+    restart: unless-stopped
+
+    depends_on:
+      - ravendb
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      RavenDB__Urls__0: "http://ravendb:8080"
+      RavenDB__Database: "DemoDb"
+
+    ports:
+      - "5000:8080"
+
+    networks:
+      - app-network
+
+volumes:
+  ravendb_data:
+  ravendb_logs:
+
+networks:
+  app-network:
+    driver: bridge
