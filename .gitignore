@@ -1,2 +1,3 @@
-﻿/RavenDbDemo/.vs/RavenDbDemo
-/RavenDbDemo/obj
+﻿.vs/
+obj/
+bin/
