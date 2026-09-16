@@ -1,34 +1,60 @@
+using Raven.Client.Documents;
+using RavenDbDemo.Infrastructure;
 
-namespace RavenDbDemo
+var builder = WebApplication.CreateBuilder(args);
+
+var store = RavenDbContext.CreateStore(
+    builder.Configuration);
+
+builder.Services.AddSingleton<IDocumentStore>(store);
+
+var app = builder.Build();
+
+app.MapGet("/", () =>
 {
-    public class Program
+    return Results.Ok(new
     {
-        public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
+        message = "RavenDB Demo",
+        status = "running"
+    });
+});
 
-            // Add services to the container.
+app.MapGet("/test", async (IDocumentStore store) =>
+{
+    using var session = store.OpenAsyncSession();
 
-            builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+    var count = await session
+        .Query<Customer>()
+        .CountAsync();
 
-            var app = builder.Build();
+    return Results.Ok(new
+    {
+        RavenDB = "Connected",
+        CustomerCount = count
+    });
+});
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-            }
+app.MapPost("/customers", async (
+    Customer customer,
+    IDocumentStore store) =>
+{
+    using var session = store.OpenAsyncSession();
 
-            app.UseHttpsRedirection();
+    await session.StoreAsync(customer);
 
-            app.UseAuthorization();
+    await session.SaveChangesAsync();
+
+    return Results.Ok(customer);
+});
+
+app.Run();
 
 
-            app.MapControllers();
+public class Customer
+{
+    public string? Id { get; set; }
 
-            app.Run();
-        }
-    }
+    public string Name { get; set; } = "";
+
+    public string Email { get; set; } = "";
 }
