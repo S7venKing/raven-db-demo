@@ -14,17 +14,21 @@ public static class RavenDbContext
         var database = configuration["RavenDB:Database"];
 
         if (urls == null || urls.Length == 0)
+        {
             throw new InvalidOperationException(
                 "RavenDB URLs chưa được cấu hình.");
+        }
 
         if (string.IsNullOrWhiteSpace(database))
+        {
             throw new InvalidOperationException(
                 "RavenDB Database chưa được cấu hình.");
+        }
 
         var store = new DocumentStore
         {
             Urls = urls,
-            Database = database
+            Database = database.Trim()
         };
 
         store.Initialize();
