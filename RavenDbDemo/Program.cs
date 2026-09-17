@@ -1,15 +1,32 @@
 using Raven.Client.Documents;
 using RavenDbDemo.Infrastructure;
+using RavenDbDemo.Models;
+using RavenDbDemo.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// RavenDB
 var store = RavenDbContext.CreateStore(
     builder.Configuration);
 
+
 builder.Services.AddSingleton<IDocumentStore>(store);
+
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+
+builder.Services.AddControllers();
+
+builder.Services.AddEndpointsApiExplorer();
+
 
 var app = builder.Build();
 
+app.UseHttpsRedirection();
+
+// Controllers
+app.MapControllers();
+
+// Health check
 app.MapGet("/", () =>
 {
     return Results.Ok(new
@@ -19,42 +36,29 @@ app.MapGet("/", () =>
     });
 });
 
-app.MapGet("/test", async (IDocumentStore store) =>
+app.MapGet("/ready", async (IDocumentStore store) =>
 {
-    using var session = store.OpenAsyncSession();
-
-    var count = await session
-        .Query<Customer>()
-        .CountAsync();
-
-    return Results.Ok(new
+    try
     {
-        RavenDB = "Connected",
-        CustomerCount = count
-    });
-});
+        using var session = store.OpenAsyncSession();
 
-app.MapPost("/customers", async (
-    Customer customer,
-    IDocumentStore store) =>
-{
-    using var session = store.OpenAsyncSession();
+        var count = await session
+            .Query<Customer>()
+            .CountAsync();
 
-    await session.StoreAsync(customer);
-
-    await session.SaveChangesAsync();
-
-    return Results.Ok(customer);
+        return Results.Ok(new
+        {
+            RavenDB = "Connected",
+            CustomerCount = count
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(
+            title: "RavenDB connection failed",
+            detail: ex.Message,
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
 });
 
 app.Run();
-
-
-public class Customer
-{
-    public string? Id { get; set; }
-
-    public string Name { get; set; } = "";
-
-    public string Email { get; set; } = "";
-}
