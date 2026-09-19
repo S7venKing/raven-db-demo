@@ -10,5 +10,5 @@ public class AppDbContext : DbContext
     {
     }
 
-    public DbSet<Platform> Customers => Set<Platform>();
+    public DbSet<Platform> Platforms => Set<Platform>();
 }

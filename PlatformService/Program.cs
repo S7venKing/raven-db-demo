@@ -1,5 +1,6 @@
 
 using Microsoft.EntityFrameworkCore;
+using PlatformService.Repository;
 
 namespace PlatformService
 {
@@ -13,6 +14,8 @@ namespace PlatformService
 
             builder.Services.AddDbContext<Data.AppDbContext>(opt =>
                 opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddScoped<IPlatformRepository, PlatformRepository>();
 
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

@@ -1,4 +1,6 @@
-﻿using PlatformService.Data;
+﻿
+using Microsoft.EntityFrameworkCore;
+using PlatformService.Data;
 using PlatformService.Models;
 
 namespace PlatformService.Repository
@@ -7,39 +9,56 @@ namespace PlatformService.Repository
     {
         private readonly AppDbContext _context;
 
-        public PlatformRepository(AppDbContext appDbContext)
+        public PlatformRepository(AppDbContext context)
         {
-            _context = appDbContext;
+            _context = context;
         }
 
-        void IPlatformRepository.CreatePlatform(Platform platform)
+        public void CreatePlatform(Platform platform)
         {
-            throw new NotImplementedException();
+            ArgumentNullException.ThrowIfNull(platform);
+
+            _context.Platforms.Add(platform);
         }
 
-        void IPlatformRepository.DeletePlatform(Platform platform)
+        public void DeletePlatform(int id)
         {
-            throw new NotImplementedException();
+            var platform = _context.Platforms
+                .FirstOrDefault(p => p.Id == id);
+
+            if (platform == null)
+            {
+                return;
+            }
+
+            _context.Platforms.Remove(platform);
         }
 
-        IEnumerable<Platform> IPlatformRepository.GetAllPlatforms()
+        public IEnumerable<Platform> GetAllPlatforms()
         {
-            throw new NotImplementedException();
+            return _context.Platforms
+                .AsNoTracking()
+                .ToList();
         }
 
-        Platform? IPlatformRepository.GetPlatformById(int id)
+        public Platform? GetPlatformById(int id)
         {
-            throw new NotImplementedException();
+            return _context.Platforms
+                .AsNoTracking()
+                .FirstOrDefault(p => p.Id == id);
         }
 
-        bool IPlatformRepository.SaveChanges()
+        public void UpdatePlatform(Platform platform)
+        {
+            ArgumentNullException.ThrowIfNull(platform);
+
+            _context.Platforms.Update(platform);
+        }
+
+        public bool SaveChanges()
         {
             return _context.SaveChanges() >= 0;
         }
-
-        void IPlatformRepository.UpdatePlatform(Platform platform)
-        {
-            throw new NotImplementedException();
-        }
     }
 }
+

@@ -10,7 +10,7 @@ namespace PlatformService.Repository
         Platform? GetPlatformById(int id);
         void CreatePlatform(Platform platform);
         void UpdatePlatform(Platform platform);
-        void DeletePlatform(Platform platform);
+        void DeletePlatform(int id);
 
     }
 }
