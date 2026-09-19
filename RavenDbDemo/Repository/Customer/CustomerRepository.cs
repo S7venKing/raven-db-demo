@@ -1,81 +1,187 @@
 ﻿using Raven.Client.Documents;
 using RavenDbDemo.Models;
+using RavenDbDemo.Models.Customers;
 
-namespace RavenDbDemo.Repositories
+namespace RavenDbDemo.Repositories;
+
+public class CustomerRepository : ICustomerRepository
 {
-    public class CustomerRepository : ICustomerRepository
+    private readonly IDocumentStore _store;
+
+    public CustomerRepository(IDocumentStore store)
     {
-        private readonly IDocumentStore _store;
+        _store = store;
+    }
 
-        public CustomerRepository(IDocumentStore store)
+    public async Task<PagedResult<Customer>> GetAllAsync(
+        CustomerFilter filter)
+    {
+        using var session = _store.OpenAsyncSession();
+
+        // Validate paging
+        var page = filter.Page < 1
+            ? 1
+            : filter.Page;
+
+        var pageSize = filter.PageSize switch
         {
-            _store = store;
+            < 1 => 20,
+            > 100 => 100,
+            _ => filter.PageSize
+        };
+
+        var query = session
+            .Query<Customer>()
+            .AsQueryable();
+
+        // ============================
+        // FILTER
+        // ============================
+
+        if (!string.IsNullOrWhiteSpace(filter.Keyword))
+        {
+            var keyword = filter.Keyword.Trim();
+
+            query = query.Where(x =>
+                x.Name.Contains(keyword) ||
+                x.Email.Contains(keyword) ||
+                x.Phone.Contains(keyword));
         }
 
-        public async Task<List<Customer>> GetAllAsync()
+        if (!string.IsNullOrWhiteSpace(filter.Email))
         {
-            using var session = _store.OpenAsyncSession();
+            var email = filter.Email.Trim();
 
-            return await session
-                .Query<Customer>()
-                .OrderByDescending(x => x.CreatedAt)
-                .ToListAsync();
+            query = query.Where(x =>
+                x.Email == email);
         }
 
-        public async Task<Customer?> GetByIdAsync(string id)
+        if (!string.IsNullOrWhiteSpace(filter.Phone))
         {
-            using var session = _store.OpenAsyncSession();
+            var phone = filter.Phone.Trim();
 
-            return await session.LoadAsync<Customer>(id);
+            query = query.Where(x =>
+                x.Phone == phone);
         }
 
-        public async Task<Customer> CreateAsync(Customer customer)
+        // ============================
+        // COUNT
+        // ============================
+
+        var totalItems = await query.CountAsync();
+
+        // ============================
+        // SORT
+        // ============================
+
+        query = filter.SortBy.ToLowerInvariant() switch
         {
-            using var session = _store.OpenAsyncSession();
+            "name" => filter.SortDescending
+                ? query.OrderByDescending(x => x.Name)
+                : query.OrderBy(x => x.Name),
 
-            customer.CreatedAt = DateTime.UtcNow;
+            "email" => filter.SortDescending
+                ? query.OrderByDescending(x => x.Email)
+                : query.OrderBy(x => x.Email),
 
-            await session.StoreAsync(customer);
+            "phone" => filter.SortDescending
+                ? query.OrderByDescending(x => x.Phone)
+                : query.OrderBy(x => x.Phone),
 
-            await session.SaveChangesAsync();
+            "createdat" => filter.SortDescending
+                ? query.OrderByDescending(x => x.CreatedAt)
+                : query.OrderBy(x => x.CreatedAt),
 
-            return customer;
-        }
+            _ => query.OrderByDescending(x => x.CreatedAt)
+        };
 
-        public async Task<bool> UpdateAsync(
-            string id,
-            Customer customer)
+        // ============================
+        // PAGINATION
+        // ============================
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResult<Customer>
         {
-            using var session = _store.OpenAsyncSession();
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems
+        };
+    }
 
-            var existing = await session.LoadAsync<Customer>(id);
+    public async Task<Customer?> GetByIdAsync(string id)
+    {
+        using var session = _store.OpenAsyncSession();
 
-            if (existing == null)
-                return false;
+        return await session.LoadAsync<Customer>(id);
+    }
 
-            existing.Name = customer.Name;
-            existing.Email = customer.Email;
-            existing.Phone = customer.Phone;
+    public async Task<Customer?> GetByEmailAsync(
+        string email)
+    {
+        using var session = _store.OpenAsyncSession();
 
-            await session.SaveChangesAsync();
+        email = email.Trim();
 
-            return true;
-        }
+        return await session
+            .Query<Customer>()
+            .FirstOrDefaultAsync(x =>
+                x.Email == email);
+    }
 
-        public async Task<bool> DeleteAsync(string id)
-        {
-            using var session = _store.OpenAsyncSession();
+    public async Task<Customer> CreateAsync(
+        Customer customer)
+    {
+        using var session = _store.OpenAsyncSession();
 
-            var customer = await session.LoadAsync<Customer>(id);
+        customer.CreatedAt = DateTime.UtcNow;
 
-            if (customer == null)
-                return false;
+        await session.StoreAsync(customer);
 
-            session.Delete(customer);
+        await session.SaveChangesAsync();
 
-            await session.SaveChangesAsync();
+        return customer;
+    }
 
-            return true;
-        }
+    public async Task<bool> UpdateAsync(
+        string id,
+        Customer customer)
+    {
+        using var session = _store.OpenAsyncSession();
+
+        var existing =
+            await session.LoadAsync<Customer>(id);
+
+        if (existing == null)
+            return false;
+
+        existing.Name = customer.Name;
+        existing.Email = customer.Email;
+        existing.Phone = customer.Phone;
+
+        await session.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<bool> DeleteAsync(string id)
+    {
+        using var session = _store.OpenAsyncSession();
+
+        var existing =
+            await session.LoadAsync<Customer>(id);
+
+        if (existing == null)
+            return false;
+
+        session.Delete(existing);
+
+        await session.SaveChangesAsync();
+
+        return true;
     }
 }

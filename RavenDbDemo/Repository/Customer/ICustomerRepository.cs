@@ -1,12 +1,15 @@
 ﻿using RavenDbDemo.Models;
+using RavenDbDemo.Models.Customers;
 
 namespace RavenDbDemo.Repositories
 {
     public interface ICustomerRepository
     {
-        Task<List<Customer>> GetAllAsync();
+        Task<PagedResult<Customer>> GetAllAsync(CustomerFilter filter);
 
         Task<Customer?> GetByIdAsync(string id);
+
+        Task<Customer?> GetByEmailAsync(string email);
 
         Task<Customer> CreateAsync(Customer customer);
 

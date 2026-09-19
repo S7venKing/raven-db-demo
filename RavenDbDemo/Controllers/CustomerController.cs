@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using RavenDbDemo.Models;
+using RavenDbDemo.Models.Customers;
 using RavenDbDemo.Repositories;
 
 namespace RavenDbDemo.Controllers
@@ -17,11 +18,13 @@ namespace RavenDbDemo.Controllers
 
         // GET: api/customer
         [HttpGet]
-        public async Task<ActionResult<List<Customer>>> GetAll()
+        public async Task<ActionResult<PagedResult<Customer>>> GetAll(
+            [FromQuery] CustomerFilter filter)
         {
-            var customers = await _repository.GetAllAsync();
+            var result =
+                await _repository.GetAllAsync(filter);
 
-            return Ok(customers);
+            return Ok(result);
         }
 
         // GET: api/customer/1-A
@@ -38,6 +41,7 @@ namespace RavenDbDemo.Controllers
 
             return Ok(customer);
         }
+
 
         // POST: api/customer
         [HttpPost]
